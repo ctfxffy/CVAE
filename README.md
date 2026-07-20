@@ -13,10 +13,13 @@ pip install -r requirements.txt
 ## 使用流程
 
 ```bash
-# 1. 下载数据（约 1.4GB，失败时按提示手动下载）
-python -m src.data.download
+# 0. 准备数据：将 CelebA 放入 data/celeba/，目录结构应为
+#    data/celeba/img_align_celeba/*.jpg
+#    data/celeba/list_attr_celeba.txt
+#    data/celeba/list_eval_partition.txt
+#    （划分文件可按图片编号顺序生成：前 162770 张 train、接着 19867 张 val、其余 test）
 
-# 2. 训练（RTX 4060 8GB 约 1.5-2 小时；样图存 outputs/samples/）
+# 1. 训练（RTX 4060 8GB 约 1.5-2 小时；样图存 outputs/samples/）
 python -m src.train --config configs/default.yaml
 # 断点续训：
 python -m src.train --resume checkpoints/latest.pt

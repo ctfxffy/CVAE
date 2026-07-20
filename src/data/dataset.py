@@ -48,7 +48,7 @@ class CelebAAttrDataset(Dataset):
         attr_map = read_attr_file(str(self.root / "list_attr_celeba.txt"), attr_names)
         self.files = [n for n in sorted(split_map) if split_map[n] == code and n in attr_map]
         if not self.files:
-            raise FileNotFoundError(f"{root} 下没有 split={split} 的样本，请先运行下载脚本")
+            raise FileNotFoundError(f"{root} 下没有 split={split} 的样本，请检查数据集是否已放入该目录")
         self.attr_map = attr_map
         self.transform = transforms.Compose([
             transforms.CenterCrop(148),
