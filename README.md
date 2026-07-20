@@ -3,6 +3,7 @@
 输入人脸属性（性别、微笑、眼镜等 8 个 0/1 开关），生成对应的人脸图片。
 
 - **模型**: 卷积条件变分自编码器（CVAE），latent_dim=256，参数量约 11.9M
+- **预训练权重**: 从 [Releases](https://github.com/ctfxffy/CVAE/releases) 下载 `best.pt`，放到 `checkpoints/` 目录
 - **数据集**: CelebA，img_align_celeba（202,599 张人脸，分辨率 64×64）
 
 
