@@ -1,38 +1,196 @@
 # CVAE-CelebA：属性条件人脸生成
 
-输入人脸属性（微笑、眼镜、性别等 8 个开关），生成对应的人脸图片。
-模型：卷积条件变分自编码器（CVAE），数据集：CelebA，分辨率 64×64。
+输入人脸属性（性别、微笑、眼镜等 8 个 0/1 开关），生成对应的人脸图片。
+
+- **模型**: 卷积条件变分自编码器（CVAE），latent_dim=256，参数量约 11.9M
+- **数据集**: CelebA，img_align_celeba（202,599 张人脸，分辨率 64×64）
+- **硬件要求**: NVIDIA GPU（≥ 8GB 显存，RTX 4060 Laptop 已验证）
+- **训练耗时**: 约 1.5–2 小时（30 epochs × 162,770 张图，batch=128，AMP）
+
+---
 
 ## 安装
 
 ```bash
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# CUDA 版 PyTorch（必须，CPU 训练几乎不可行）
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+
+# 其余依赖
 pip install -r requirements.txt
 ```
 
-## 使用流程
+验证安装（应输出 `True` 和 GPU 名称）：
 
 ```bash
-# 0. 准备数据：将 CelebA 放入 data/celeba/，目录结构应为
-#    data/celeba/img_align_celeba/*.jpg
-#    data/celeba/list_attr_celeba.txt
-#    data/celeba/list_eval_partition.txt
-#    （划分文件可按图片编号顺序生成：前 162770 张 train、接着 19867 张 val、其余 test）
+python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
 
-# 1. 训练（RTX 4060 8GB 约 1.5-2 小时；样图存 outputs/samples/）
+---
+
+## 数据准备
+
+将 CelebA 数据集放入 `data/celeba/`，目录结构如下：
+
+```
+data/celeba/
+├── img_align_celeba/          # 202,599 张 .jpg 图片（178×218）
+├── list_attr_celeba.txt       # 40 个属性的标注文件
+└── list_eval_partition.txt    # train/val/test 划分文件
+```
+
+`list_eval_partition.txt` 按官方顺序生成即可：前 162,770 张 train、接着 19,867 张 val、其余 test。
+
+> 数据集未下载可参考 [CelebA 官网](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) 或 Hugging Face 镜像。
+
+---
+
+## 使用流程
+
+### 1. 训练
+
+```bash
 python -m src.train --config configs/default.yaml
-# 断点续训：
+```
+
+断点续训：
+
+```bash
 python -m src.train --resume checkpoints/latest.pt
+```
 
-# 3. 生成
+训练过程中：
+- 终端显示 tqdm 进度条（实时 loss + 全局步数）
+- 每 500 步在 `outputs/samples/step_XXXXXX.png` 存一张**样本网格图**（见下方"如何观察训练效果"）
+- 每个 epoch 保存一次 checkpoint（`checkpoints/latest.pt`，val loss 最优时额外存 `best.pt`）
+
+### 2. 生成
+
+```bash
 python -m src.generate --attrs "Smiling=1,Eyeglasses=1" -n 8 --seed 42
+```
 
-# 4. 评估
+选项：
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `--attrs` | 全 0 | 属性组合，如 `"Male=1,Smiling=0"`，逗号分隔 |
+| `-n` | 8 | 生成张数 |
+| `--seed` | 42 | 随机种子 |
+| `--checkpoint` | `checkpoints/best.pt` | 模型权重路径 |
+| `--config` | `configs/default.yaml` | 配置文件路径 |
+| `--out` | 自动命名 | 指定输出路径，默认 `outputs/generated/<attrs>_n<n>_seed<seed>.png` |
+
+### 3. 评估
+
+```bash
 python -m src.evaluate
 ```
 
-可用属性（0=关 1=开）：Male, Smiling, Eyeglasses, Mustache, Blond_Hair, Black_Hair, Young, Wearing_Lipstick
+输出：
 
-## 目录结构
+- **终端**: val 集前 20 个 batch 的平均 MSE 与 KL 散度
+- **图片**: `outputs/eval/recon_grid.png`（上排原始图片、下排对应重建，对比评估重建质量）
 
-见 `docs/superpowers/specs/2026-07-20-cvae-celeba-design.md`。
+---
+
+## 可用属性
+
+共 8 个（按 `configs/default.yaml` 中 `attr_names` 顺序），值取 0（关）或 1（开）：
+
+| 属性 | 中文含义 | 属性 | 中文含义 |
+|---|---|---|---|
+| Male | 男性 | Black_Hair | 黑发 |
+| Smiling | 微笑 | Young | 年轻 |
+| Eyeglasses | 眼镜 | Wearing_Lipstick | 涂口红 |
+| Mustache | 胡子 | Blond_Hair | 金发 |
+
+---
+
+## 如何观察训练效果
+
+训练不是看 loss 数字，而是看 **样本网格图**。
+
+打开 `outputs/samples/`，按修改时间排序，最新那张就是最近一次采样。每张图是 **9 行 × 8 列** 的网格：
+
+```
+第 1 行：8 个属性全关 — 查看基线脸长什么样
+第 2 行：只开 Male      — 是否有男性特征
+第 3 行：只开 Smiling    — 嘴角是否上扬
+第 4 行：只开 Eyeglasses — 是否戴眼镜
+...
+第 9 行：只开 Wearing_Lipstick
+```
+
+每行内 8 列是同一个属性组合配不同的随机 z，所以脸蛋不同。
+
+**判断标准**：越往后训练，图片越清晰；行间对比能看出属性差异（如 Smiling 行微笑、Eyeglasses 行有眼镜框）。如果行间完全看不出区别，说明属性条件还没学会。
+
+---
+
+## 配置说明
+
+`configs/default.yaml` 中可调的参数：
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `seed` | 42 | 全局随机种子 |
+| `data_root` | `data/celeba` | 数据集目录 |
+| `image_size` | 64 | 输入分辨率 |
+| `attr_names` | 8 个属性 | 可在列表中增减属性名（须与 CelebA 官方一致） |
+| `latent_dim` | 256 | 隐变量 z 维度 |
+| `beta` | 1.0 | KL 散度权重（>1 属性控制更强但图更模糊，<1 反之） |
+| `batch_size` | 128 | 显存不足时减半 |
+| `num_workers` | 4 | DataLoader 线程数 |
+| `lr` | 0.001 | Adam 学习率 |
+| `epochs` | 25 | 训练轮数 |
+| `sample_every` | 500 | 样本图保存间隔（步数） |
+| `checkpoint_dir` | `checkpoints` | 模型保存目录 |
+| `output_dir` | `outputs` | 输出目录 |
+
+---
+
+## 项目结构
+
+```
+E:\CVAE\
+├── configs/default.yaml       # 所有超参数
+├── data/celeba/               # 数据集（不入库）
+├── src/
+│   ├── data/dataset.py        # CelebA 数据集封装（CenterCrop→Resize→归一化，属性 0/1）
+│   ├── models/
+│   │   ├── encoder.py         # 卷积编码器：image + attr → μ, logσ²
+│   │   ├── decoder.py         # 转置卷积解码器：z + attr → image
+│   │   └── cvae.py            # CVAE 组合：重参数化、前向、损失、采样
+│   ├── training/
+│   │   ├── trainer.py         # 训练循环：AMP、tqdm、定期采样、checkpoint
+│   │   └── utils.py           # 工具：种子、checkpoint IO、图像保存
+│   ├── train.py               # 训练入口
+│   ├── generate.py            # 生成入口
+│   └── evaluate.py            # 评估入口
+├── checkpoints/               # 模型权重（不入库）
+├── outputs/                   # 生成结果（不入库）
+└── requirements.txt
+```
+
+---
+
+## 典型 workflow
+
+```bash
+# 0. 确认 GPU 可用
+python -c "import torch; assert torch.cuda.is_available()"
+
+# 1. 训练
+python -m src.train
+# 期间观察 outputs/samples/ 中样图逐步清晰
+
+# 2. 用最优 checkpoint 生成
+python -m src.generate --attrs "Smiling=1,Eyeglasses=1,Blond_Hair=1" -n 8
+
+# 3. 尝试不同属性组合验证效果
+python -m src.generate --attrs "Male=1,Mustache=1" -n 8
+python -m src.generate --attrs "Young=1,Black_Hair=1" -n 8
+
+# 4. 查看重建质量
+python -m src.evaluate
+```
