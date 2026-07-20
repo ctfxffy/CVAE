@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import torch
+from tqdm import tqdm
 
 from src.models.cvae import cvae_loss
 from src.training.utils import load_checkpoint, save_checkpoint, save_image_grid
@@ -39,8 +40,8 @@ class Trainer:
     def train(self) -> None:
         try:
             for epoch in range(self.start_epoch, self.cfg["epochs"] + 1):
-                train_loss = self._run_epoch(self.train_loader, train=True)
-                val_loss = self._run_epoch(self.val_loader, train=False)
+                train_loss = self._run_epoch(self.train_loader, train=True, desc=f"Epoch {epoch}/{self.cfg['epochs']} train")
+                val_loss = self._run_epoch(self.val_loader, train=False, desc=f"Epoch {epoch}/{self.cfg['epochs']} val  ")
                 logger.info(
                     "epoch %d/%d  train=%.4f  val=%.4f",
                     epoch, self.cfg["epochs"], train_loss, val_loss,
@@ -53,10 +54,11 @@ class Trainer:
                 ) from e
             raise
 
-    def _run_epoch(self, loader, train: bool) -> float:
+    def _run_epoch(self, loader, train: bool, desc: str = "") -> float:
         self.model.train() if train else self.model.eval()
         total, count = 0.0, 0
-        for x, attr in loader:
+        pbar = tqdm(loader, desc=desc, unit="batch", ncols=100)
+        for x, attr in pbar:
             x = x.to(self.device, non_blocking=True)
             attr = attr.to(self.device, non_blocking=True)
             with torch.set_grad_enabled(train):
@@ -73,6 +75,7 @@ class Trainer:
                         self._sample_grid()
             total += loss.item() * x.size(0)
             count += x.size(0)
+            pbar.set_postfix({"loss": f"{loss.item():.4f}", "step": self.global_step})
         return total / max(count, 1)
 
     @torch.no_grad()
