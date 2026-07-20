@@ -4,28 +4,10 @@
 
 - **模型**: 卷积条件变分自编码器（CVAE），latent_dim=256，参数量约 11.9M
 - **数据集**: CelebA，img_align_celeba（202,599 张人脸，分辨率 64×64）
-- **硬件要求**: NVIDIA GPU（≥ 8GB 显存，RTX 4060 Laptop 已验证）
-- **训练耗时**: 约 1.5–2 小时（30 epochs × 162,770 张图，batch=128，AMP）
+
 
 ---
 
-## 安装
-
-```bash
-# CUDA 版 PyTorch（必须，CPU 训练几乎不可行）
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
-
-# 其余依赖
-pip install -r requirements.txt
-```
-
-验证安装（应输出 `True` 和 GPU 名称）：
-
-```bash
-python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
-```
-
----
 
 ## 数据准备
 
@@ -37,8 +19,6 @@ data/celeba/
 ├── list_attr_celeba.txt       # 40 个属性的标注文件
 └── list_eval_partition.txt    # train/val/test 划分文件
 ```
-
-`list_eval_partition.txt` 按官方顺序生成即可：前 162,770 张 train、接着 19,867 张 val、其余 test。
 
 > 数据集未下载可参考 [CelebA 官网](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) 或 Hugging Face 镜像。
 
@@ -106,26 +86,7 @@ python -m src.evaluate
 
 ---
 
-## 如何观察训练效果
 
-训练不是看 loss 数字，而是看 **样本网格图**。
-
-打开 `outputs/samples/`，按修改时间排序，最新那张就是最近一次采样。每张图是 **9 行 × 8 列** 的网格：
-
-```
-第 1 行：8 个属性全关 — 查看基线脸长什么样
-第 2 行：只开 Male      — 是否有男性特征
-第 3 行：只开 Smiling    — 嘴角是否上扬
-第 4 行：只开 Eyeglasses — 是否戴眼镜
-...
-第 9 行：只开 Wearing_Lipstick
-```
-
-每行内 8 列是同一个属性组合配不同的随机 z，所以脸蛋不同。
-
-**判断标准**：越往后训练，图片越清晰；行间对比能看出属性差异（如 Smiling 行微笑、Eyeglasses 行有眼镜框）。如果行间完全看不出区别，说明属性条件还没学会。
-
----
 
 ## 配置说明
 
