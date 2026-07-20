@@ -95,7 +95,7 @@ ConvT 64→3,    k4 s2 p1 → 3×64×64, Tanh → [-1,1]
 ## 5. 数据流
 
 1. `download.py` 下载 img_align_celeba.zip 与 list_attr_celeba.txt，校验文件完整性；torchvision 的 Google Drive 源限流时回退镜像 URL，再失败则打印手动放置指引
-2. `dataset.py`：读图 → resize 64×64 → ToTensor → 归一化 [-1,1]；属性从 txt 读 8 列，{-1,1} 映射 {0,1}
+2. `dataset.py`：读图（img_align_celeba 原始尺寸 178×218）→ CenterCrop 到 148×148（去掉上下背景冗余，避免直接缩放导致人脸纵向压扁）→ Resize 64×64 → ToTensor → 归一化 [-1,1]；属性从 txt 读 8 列，{-1,1} 映射 {0,1}
 3. DataLoader：batch=128，官方划分 train 162770 / val 19867（test 划分不用）
 4. 训练中每 500 步用固定 z + 8 组属性组合采样存图到 `outputs/samples/`
 5. 生成：从 N(0,1) 采 n 个 z，拼接用户指定属性向量，解码，保存网格图
