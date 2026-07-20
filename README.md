@@ -33,12 +33,6 @@ python -m src.evaluate
 
 可用属性（0=关 1=开）：Male, Smiling, Eyeglasses, Mustache, Blond_Hair, Black_Hair, Young, Wearing_Lipstick
 
-## 测试
-
-```bash
-python -m pytest tests/ -v
-```
-
 ## 目录结构
 
 见 `docs/superpowers/specs/2026-07-20-cvae-celeba-design.md`。
