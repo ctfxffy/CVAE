@@ -34,7 +34,7 @@ def files_ready(root: str) -> bool:
 def _gdown(file_id: str, out_path: Path) -> bool:
     try:
         subprocess.run(
-            [sys.executable, "-m", "gdown", "--fuzzy",
+            [sys.executable, "-m", "gdown",
              f"https://drive.google.com/uc?id={file_id}", "-O", str(out_path)],
             check=True,
         )
