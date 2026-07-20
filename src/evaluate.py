@@ -46,7 +46,7 @@ def main():
     cfg = load_config(args.config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = CVAE(cfg["latent_dim"], len(cfg["attr_names"]), cfg["image_size"])
-    load_checkpoint(args.checkpoint, model, str(device))
+    load_checkpoint(args.checkpoint, model, device=str(device))
     model.to(device)
 
     ds = CelebAAttrDataset(cfg["data_root"], cfg["attr_names"], "val", cfg["image_size"])

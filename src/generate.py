@@ -27,7 +27,7 @@ def generate(attrs_str, n, checkpoint, out_path, config, seed=42):
     torch.manual_seed(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = CVAE(config["latent_dim"], len(config["attr_names"]), config["image_size"])
-    load_checkpoint(checkpoint, model, str(device))
+    load_checkpoint(checkpoint, model, device=str(device))
     model.to(device).eval()
 
     attr = parse_attrs(attrs_str, config["attr_names"]).to(device)
