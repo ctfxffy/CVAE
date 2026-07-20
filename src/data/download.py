@@ -43,6 +43,19 @@ def _gdown(file_id: str, out_path: Path) -> bool:
         return False
 
 
+def _generate_partition_file(root: Path) -> None:
+    """官方划分按图片编号顺序：前 162770 张 train，接着 19867 张 val，其余 test。"""
+    attr_path = root / "list_attr_celeba.txt"
+    lines = attr_path.read_text(encoding="utf-8").splitlines()
+    names = sorted(ln.split()[0] for ln in lines[2:] if ln.split())
+    out = root / "list_eval_partition.txt"
+    with open(out, "w", encoding="utf-8") as f:
+        for i, name in enumerate(names):
+            code = 0 if i < 162770 else (1 if i < 182637 else 2)
+            f.write(f"{name} {code}\n")
+    print(f"已从属性文件生成官方顺序划分: {out}")
+
+
 def download_celeba(root: str) -> None:
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
@@ -52,10 +65,15 @@ def download_celeba(root: str) -> None:
 
     for name, file_id in FILES.items():
         out = root / name
-        if not out.exists():
-            print(f"下载 {name} ...")
-            if not _gdown(file_id, out):
-                raise SystemExit(MANUAL_HINT.format(root=root))
+        if out.exists():
+            continue
+        # 划分文件可从属性文件本地生成，不必下载
+        if name == "list_eval_partition.txt" and (root / "list_attr_celeba.txt").exists():
+            _generate_partition_file(root)
+            continue
+        print(f"下载 {name} ...")
+        if not _gdown(file_id, out):
+            raise SystemExit(MANUAL_HINT.format(root=root))
 
     zip_path = root / "img_align_celeba.zip"
     if zip_path.exists() and not (root / "img_align_celeba").is_dir():
