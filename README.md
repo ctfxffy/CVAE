@@ -4,6 +4,7 @@
 
 - **模型**: 卷积条件变分自编码器（CVAE），latent_dim=256，参数量约 11.9M
 - **预训练权重**: 从 [Hugging Face](https://huggingface.co/GXY12345/cvae_celebA) 下载 `best.pt`，放到 `checkpoints/` 目录
+- **学习笔记**: 见 [`note/`](note/) 目录，含 4 张 VAE/CVAE 核心原理手写笔记图片，帮助快速入门理解
 - **数据集**: CelebA，img_align_celeba（202,599 张人脸，分辨率 64×64）
 
 
